@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Lista de la compra</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f5f1;--card:#fff;--tx:#1d1d1b;--mut:#77756e;--ac:#2f7d5b;--acbg:#dff0e8;--bd:#e4e2da;--warn:#c4552d}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#161615;--card:#222221;--tx:#efeee9;--mut:#9a988f;--ac:#5fbf92;--acbg:#1f3a2e;--bd:#33332f;--warn:#e07a52}}
+*{box-sizing:border-box}
+body{margin:0 auto;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;max-width:640px;padding:0 14px 90px}
+header{position:sticky;top:0;background:var(--bg);padding:12px 0 8px;z-index:5}
+h1{font-size:20px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center}
+.tabs{display:flex;gap:6px;background:var(--bd);padding:4px;border-radius:12px}
+.tabs button{flex:1;border:0;background:none;color:var(--mut);font:inherit;font-weight:600;padding:10px;border-radius:9px}
+.tabs button.on{background:var(--card);color:var(--tx);box-shadow:0 1px 3px #0002}
+.sec{margin:18px 0 6px;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
+.row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:6px;width:100%;text-align:left;font:inherit;color:var(--tx)}
+.row .n{flex:1}
+.row .q{color:var(--mut);font-size:14px}
+.row.need{background:var(--acbg);border-color:var(--ac)}
+.row.need .tag{background:var(--ac);color:#fff}
+.tag{font-size:12px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--bd);color:var(--mut)}
+.row.got{opacity:.45;text-decoration:line-through}
+.chk{width:24px;height:24px;border-radius:50%;border:2px solid var(--ac);flex:none;display:grid;place-items:center;color:#fff;font-size:14px}
+.got .chk{background:var(--ac)}
+.step{border:1px solid var(--bd);background:var(--card);color:var(--tx);min-width:30px;height:30px;border-radius:8px;font:inherit;font-size:18px}
+h1 .step{font-size:14px;padding:0 12px}
+.empty{text-align:center;color:var(--mut);padding:40px 10px}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--bd)}
+.bar div{max-width:640px;margin:0 auto;display:flex;gap:8px}
+input,select{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;min-width:0}
+input{flex:1}
+.go{border:0;background:var(--ac);color:#fff;font:inherit;font-weight:700;border-radius:10px;padding:10px 16px}
+.ghost{border:1px solid var(--bd);background:none;color:var(--mut);font:inherit;border-radius:10px;padding:10px 14px;width:100%;margin-top:14px}
+.msg{padding:30px 10px;text-align:center;color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+  <h1><span>🛒 Lista de la compra</span><button id="ed" class="step">Editar</button></h1>
+  <div class="tabs">
+    <button id="t1" class="on">Reponer</button>
+    <button id="t2">Comprar <span id="cnt"></span></button>
+  </div>
+</header>
+<main id="main"><div class="msg">Cargando…</div></main>
+<div class="bar"><div>
+  <input id="nn" placeholder="Producto nuevo…" maxlength="60">
+  <select id="ns"></select>
+  <button class="go" id="add">+</button>
+</div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ===== PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE (sustituye todo el bloque entre llaves) ===== */
+const firebaseConfig = {
+  apiKey: "PEGA_AQUI",
+  authDomain: "PEGA_AQUI",
+  projectId: "PEGA_AQUI",
+  storageBucket: "PEGA_AQUI",
+  messagingSenderId: "PEGA_AQUI",
+  appId: "PEGA_AQUI"
+};
+/* ========================================================================================= */
+
+const SECS=["Fruta y verdura","Carne y pescado","Lácteos y huevos","Charcutería y quesos","Panadería","Despensa","Bebidas","Congelados","Limpieza","Higiene","Otros"];
+const SEED=[["Manzanas",0],["Plátanos",0],["Tomates",0],["Cebollas",0],["Patatas",0],["Ensalada",0],["Pollo",1],["Carne picada",1],["Pescado",1],["Leche",2],["Huevos",2],["Yogures",2],["Mantequilla",2],["Queso",3],["Jamón",3],["Pan",4],["Aceite de oliva",5],["Arroz",5],["Pasta",5],["Legumbres",5],["Café",5],["Azúcar",5],["Sal",5],["Tomate frito",5],["Agua",6],["Zumo",6],["Verdura congelada",7],["Helado",7],["Detergente",8],["Lavavajillas",8],["Papel de cocina",8],["Bolsas de basura",8],["Papel higiénico",9],["Gel de ducha",9],["Pasta de dientes",9]];
+let db=null,col=null,items=[],mode="reponer",editing=false;
+const $=s=>document.querySelector(s);
+const ref=id=>col.doc(id);
+const slug=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||("x"+Date.now());
+const safe=p=>p.catch(e=>{console.error(e);alert("No se pudo guardar. Revisa la conexión.")});
+
+$("#ns").innerHTML=SECS.map(s=>`<option>${s}</option>`).join("");
+$("#ed").onclick=()=>{editing=!editing;mode="reponer";render()};
+$("#t1").onclick=()=>{mode="reponer";render()};
+$("#t2").onclick=()=>{mode="comprar";editing=false;render()};
+
+function render(){
+  $("#ed").textContent=editing?"Listo":"Editar";
+  $("#t1").classList.toggle("on",mode==="reponer");
+  $("#t2").classList.toggle("on",mode==="comprar");
+  const need=items.filter(i=>i.need);
+  const pend=need.filter(i=>!i.got).length;
+  $("#cnt").textContent=pend?"("+pend+")":"";
+  const m=$("#main");m.innerHTML="";
+  const list=mode==="reponer"?items:need;
+  if(!list.length){
+    if(mode==="reponer"){
+      m.innerHTML='<div class="empty">El catálogo está vacío.<br><br><button class="go" id="seed">Cargar productos de ejemplo</button></div>';
+      $("#seed").onclick=seed;
+    }else m.innerHTML='<div class="empty">No falta nada 🎉</div>';
+    return;
+  }
+  SECS.concat([...new Set(list.map(i=>i.section).filter(s=>!SECS.includes(s)))]).forEach(sec=>{
+    const g=list.filter(i=>i.section===sec).sort((a,b)=>a.name.localeCompare(b.name,"es"));
+    if(!g.length)return;
+    const h=document.createElement("div");h.className="sec";h.textContent=sec;m.appendChild(h);
+    g.forEach(i=>m.appendChild(mode==="reponer"?rowReponer(i):rowComprar(i)));
+  });
+  if(mode==="comprar"&&need.some(i=>i.got)){
+    const b=document.createElement("button");b.className="ghost";b.textContent="Terminar compra (limpiar tachados)";
+    b.onclick=()=>need.filter(i=>i.got).forEach(i=>safe(ref(i.id).update({need:false,got:false,qty:1})));
+    m.appendChild(b);
+  }
+}
+function rowReponer(i){
+  if(editing){
+    const r=document.createElement("div");r.className="row";r.innerHTML='<span class="n"></span><button class="step"></button>';
+    r.firstChild.textContent=i.name;const b=r.querySelector("button");b.textContent="🗑";b.style.padding="0 10px";
+    let armed=false;
+    b.onclick=()=>{if(!armed){armed=true;b.textContent="¿Borrar?";b.style.color="var(--warn)";setTimeout(()=>{armed=false;b.textContent="🗑";b.style.color=""},3000)}else safe(ref(i.id).delete())};
+    return r;
+  }
+  const r=document.createElement("div");r.className="row"+(i.need?" need":"");
+  r.innerHTML=`<span class="n"></span>${i.need&&i.qty>1?`<span class="q">×${i.qty}</span>`:""}<span class="tag">${i.need?"Falta":"Hay"}</span>`;
+  r.firstChild.textContent=i.name;
+  r.style.cursor="pointer";
+  r.onclick=()=>safe(ref(i.id).update({need:!i.need,got:false,qty:1}));
+  if(i.need){
+    const mk=(t,d)=>{const b=document.createElement("button");b.className="step";b.textContent=t;
+      b.onclick=e=>{e.stopPropagation();safe(ref(i.id).update({qty:Math.max(1,(i.qty||1)+d)}))};return b};
+    r.insertBefore(mk("−",-1),r.querySelector(".tag"));r.insertBefore(mk("+",1),r.querySelector(".tag"));
+  }
+  return r;
+}
+function rowComprar(i){
+  const r=document.createElement("button");r.className="row"+(i.got?" got":"");
+  r.innerHTML=`<span class="chk">${i.got?"✓":""}</span><span class="n"></span>${i.qty>1?`<span class="q">×${i.qty}</span>`:""}`;
+  r.querySelector(".n").textContent=i.name;
+  r.onclick=()=>safe(ref(i.id).update({got:!i.got}));
+  return r;
+}
+function seed(){
+  const b=db.batch();
+  SEED.forEach(([name,s])=>b.set(ref(slug(name)),{name,section:SECS[s],need:false,got:false,qty:1}));
+  safe(b.commit());
+}
+$("#add").onclick=async()=>{
+  const name=$("#nn").value.trim();if(!name||!col)return;
+  const id=slug(name);
+  const ex=items.find(i=>i.id===id);
+  if(ex)await safe(ref(id).update({need:true,got:false}));
+  else await safe(ref(id).set({name,section:$("#ns").value,need:mode==="comprar",got:false,qty:1}));
+  $("#nn").value="";
+};
+$("#nn").addEventListener("keydown",e=>{if(e.key==="Enter")$("#add").click()});
+
+try{
+  if(firebaseConfig.apiKey==="PEGA_AQUI"){
+    $("#main").innerHTML='<div class="msg">Falta pegar la configuración de Firebase en el archivo index.html.</div>';
+  }else{
+    firebase.initializeApp(firebaseConfig);
+    db=firebase.firestore();col=db.collection("items");
+    col.onSnapshot(s=>{items=s.docs.map(d=>({id:d.id,...d.data()}));render()},
+      e=>{$("#main").innerHTML='<div class="msg">No se pudo cargar la lista. Revisa las reglas de Firebase.<br><small>'+(e.code||"")+'</small></div>'});
+  }
+}catch(e){$("#main").innerHTML='<div class="msg">Error al conectar con Firebase.</div>'}
+</script>
+</body>
+</html>
