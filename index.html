@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="ca">
 <head>
 <meta charset="utf-8">
 <title>Llista de la compra</title>
@@ -41,13 +41,13 @@ input{flex:1}
 <header>
   <h1><span>🛒 Llista de la compra</span><button id="ed" class="step">Editar</button></h1>
   <div class="tabs">
-    <button id="t1" class="on">Reposar</button>
+    <button id="t1" class="on">Reposició</button>
     <button id="t2">Comprar <span id="cnt"></span></button>
   </div>
 </header>
 <main id="main"><div class="msg">Carregant…</div></main>
 <div class="bar"><div>
-  <input id="nn" placeholder="Producto nuevo…" maxlength="60">
+  <input id="nn" placeholder="Producte nou…" maxlength="60">
   <select id="ns"></select>
   <button class="go" id="add">+</button>
 </div></div>
@@ -66,13 +66,13 @@ const firebaseConfig = {
 };
 /* ========================================================================================= */
 
-const SECS=["Fruta y verdura","Carne y pescado","Lácteos y huevos","Charcutería y quesos","Panadería","Despensa","Bebidas","Congelados","Limpieza","Higiene","Otros"];
-const SEED=[["Manzanas",0],["Plátanos",0],["Tomates",0],["Cebollas",0],["Patatas",0],["Ensalada",0],["Pollo",1],["Carne picada",1],["Pescado",1],["Leche",2],["Huevos",2],["Yogures",2],["Mantequilla",2],["Queso",3],["Jamón",3],["Pan",4],["Aceite de oliva",5],["Arroz",5],["Pasta",5],["Legumbres",5],["Café",5],["Azúcar",5],["Sal",5],["Tomate frito",5],["Agua",6],["Zumo",6],["Verdura congelada",7],["Helado",7],["Detergente",8],["Lavavajillas",8],["Papel de cocina",8],["Bolsas de basura",8],["Papel higiénico",9],["Gel de ducha",9],["Pasta de dientes",9]];
+const SECS=["Fruita i verdura","Carn i peix","Làctics i ous","Xarcuteria i formatges","Fleca","Rebost","Begudes","Congelats","Neteja","Higiene","Altres"];
+const SEED=[["Pomes",0],["Plàtans",0],["Tomàquets",0],["Cebes",0],["Patates",0],["Enciam",0],["Pollastre",1],["Carn picada",1],["Peix",1],["Llet",2],["Ous",2],["Iogurts",2],["Mantega",2],["Formatge",3],["Pernil",3],["Pa",4],["Oli d'oliva",5],["Arròs",5],["Pasta",5],["Llegums",5],["Cafè",5],["Sucre",5],["Sal",5],["Tomàquet fregit",5],["Aigua",6],["Suc",6],["Verdura congelada",7],["Gelat",7],["Detergent",8],["Rentaplats",8],["Paper de cuina",8],["Bosses d'escombraries",8],["Paper higiènic",9],["Gel de dutxa",9],["Pasta de dents",9]];
 let db=null,col=null,items=[],mode="reponer",editing=false;
 const $=s=>document.querySelector(s);
 const ref=id=>col.doc(id);
 const slug=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||("x"+Date.now());
-const safe=p=>p.catch(e=>{console.error(e);alert("No se pudo guardar. Revisa la conexión.")});
+const safe=p=>p.catch(e=>{console.error(e);alert("No s'ha pogut desar. Revisa la connexió.")});
 
 $("#ns").innerHTML=SECS.map(s=>`<option>${s}</option>`).join("");
 $("#ed").onclick=()=>{editing=!editing;mode="reponer";render()};
@@ -80,7 +80,7 @@ $("#t1").onclick=()=>{mode="reponer";render()};
 $("#t2").onclick=()=>{mode="comprar";editing=false;render()};
 
 function render(){
-  $("#ed").textContent=editing?"Listo":"Editar";
+  $("#ed").textContent=editing?"Fet":"Editar";
   $("#t1").classList.toggle("on",mode==="reponer");
   $("#t2").classList.toggle("on",mode==="comprar");
   const need=items.filter(i=>i.need);
@@ -90,19 +90,25 @@ function render(){
   const list=mode==="reponer"?items:need;
   if(!list.length){
     if(mode==="reponer"){
-      m.innerHTML='<div class="empty">El catálogo está vacío.<br><br><button class="go" id="seed">Cargar productos de ejemplo</button></div>';
+      m.innerHTML='<div class="empty">El catàleg està buit.<br><br><button class="go" id="seed">Carrega productes d&#39;exemple</button></div>';
       $("#seed").onclick=seed;
-    }else m.innerHTML='<div class="empty">No falta nada 🎉</div>';
+    }else m.innerHTML='<div class="empty">No falta res 🎉</div>';
     return;
   }
   SECS.concat([...new Set(list.map(i=>i.section).filter(s=>!SECS.includes(s)))]).forEach(sec=>{
-    const g=list.filter(i=>i.section===sec).sort((a,b)=>a.name.localeCompare(b.name,"es"));
+    const g=list.filter(i=>i.section===sec).sort((a,b)=>a.name.localeCompare(b.name,"ca"));
     if(!g.length)return;
     const h=document.createElement("div");h.className="sec";h.textContent=sec;m.appendChild(h);
     g.forEach(i=>m.appendChild(mode==="reponer"?rowReponer(i):rowComprar(i)));
   });
+  if(editing){
+    const L="Restableix el catàleg d'exemple (esborra tot)";
+    const b=document.createElement("button");b.className="ghost";b.textContent=L;let armed=false;
+    b.onclick=()=>{if(!armed){armed=true;b.textContent="Segur? Torna a prémer";setTimeout(()=>{armed=false;b.textContent=L},3000)}else reset()};
+    m.appendChild(b);
+  }
   if(mode==="comprar"&&need.some(i=>i.got)){
-    const b=document.createElement("button");b.className="ghost";b.textContent="Terminar compra (limpiar tachados)";
+    const b=document.createElement("button");b.className="ghost";b.textContent="Acabar la compra (netejar els marcats)";
     b.onclick=()=>need.filter(i=>i.got).forEach(i=>safe(ref(i.id).update({need:false,got:false,qty:1})));
     m.appendChild(b);
   }
@@ -112,11 +118,11 @@ function rowReponer(i){
     const r=document.createElement("div");r.className="row";r.innerHTML='<span class="n"></span><button class="step"></button>';
     r.firstChild.textContent=i.name;const b=r.querySelector("button");b.textContent="🗑";b.style.padding="0 10px";
     let armed=false;
-    b.onclick=()=>{if(!armed){armed=true;b.textContent="¿Borrar?";b.style.color="var(--warn)";setTimeout(()=>{armed=false;b.textContent="🗑";b.style.color=""},3000)}else safe(ref(i.id).delete())};
+    b.onclick=()=>{if(!armed){armed=true;b.textContent="Esborrar?";b.style.color="var(--warn)";setTimeout(()=>{armed=false;b.textContent="🗑";b.style.color=""},3000)}else safe(ref(i.id).delete())};
     return r;
   }
   const r=document.createElement("div");r.className="row"+(i.need?" need":"");
-  r.innerHTML=`<span class="n"></span>${i.need&&i.qty>1?`<span class="q">×${i.qty}</span>`:""}<span class="tag">${i.need?"Falta":"Hay"}</span>`;
+  r.innerHTML=`<span class="n"></span>${i.need&&i.qty>1?`<span class="q">×${i.qty}</span>`:""}<span class="tag">${i.need?"Falta":"Hi ha"}</span>`;
   r.firstChild.textContent=i.name;
   r.style.cursor="pointer";
   r.onclick=()=>safe(ref(i.id).update({need:!i.need,got:false,qty:1}));
@@ -133,6 +139,12 @@ function rowComprar(i){
   r.querySelector(".n").textContent=i.name;
   r.onclick=()=>safe(ref(i.id).update({got:!i.got}));
   return r;
+}
+function reset(){
+  const b=db.batch();
+  items.forEach(i=>b.delete(ref(i.id)));
+  SEED.forEach(([name,s])=>b.set(ref(slug(name)),{name,section:SECS[s],need:false,got:false,qty:1}));
+  editing=false;safe(b.commit());
 }
 function seed(){
   const b=db.batch();
@@ -151,14 +163,14 @@ $("#nn").addEventListener("keydown",e=>{if(e.key==="Enter")$("#add").click()});
 
 try{
   if(firebaseConfig.apiKey==="PEGA_AQUI"){
-    $("#main").innerHTML='<div class="msg">Falta pegar la configuración de Firebase en el archivo index.html.</div>';
+    $("#main").innerHTML='<div class="msg">Falta enganxar la configuració de Firebase a l&#39;arxiu index.html.</div>';
   }else{
     firebase.initializeApp(firebaseConfig);
     db=firebase.firestore();col=db.collection("items");
     col.onSnapshot(s=>{items=s.docs.map(d=>({id:d.id,...d.data()}));render()},
-      e=>{$("#main").innerHTML='<div class="msg">No se pudo cargar la lista. Revisa las reglas de Firebase.<br><small>'+(e.code||"")+'</small></div>'});
+      e=>{$("#main").innerHTML='<div class="msg">No s&#39;ha pogut carregar la llista. Revisa les regles de Firebase.<br><small>'+(e.code||"")+'</small></div>'});
   }
-}catch(e){$("#main").innerHTML='<div class="msg">Error al conectar con Firebase.</div>'}
+}catch(e){$("#main").innerHTML='<div class="msg">Error en connectar amb Firebase.</div>'}
 </script>
 </body>
 </html>
