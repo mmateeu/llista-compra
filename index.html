@@ -18,20 +18,25 @@ h1{font-size:20px;margin:0 0 10px;display:flex;justify-content:space-between;ali
 .sec{margin:18px 0 6px;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mut)}
 .row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:6px;width:100%;text-align:left;font:inherit;color:var(--tx)}
 .row .n{flex:1}
+.row .n small{display:block;color:var(--mut);font-size:12px}
 .row .q{color:var(--mut);font-size:14px}
 .row.need{background:var(--acbg);border-color:var(--ac)}
 .row.need .tag{background:var(--ac);color:#fff}
-.tag{font-size:12px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--bd);color:var(--mut)}
+.tag{font-size:12px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--bd);color:var(--mut);white-space:nowrap}
 .row.got{opacity:.45;text-decoration:line-through}
 .chk{width:24px;height:24px;border-radius:50%;border:2px solid var(--ac);flex:none;display:grid;place-items:center;color:#fff;font-size:14px}
 .got .chk{background:var(--ac)}
 .step{border:1px solid var(--bd);background:var(--card);color:var(--tx);min-width:30px;height:30px;border-radius:8px;font:inherit;font-size:18px}
 h1 .step{font-size:14px;padding:0 12px}
+.pick{flex-wrap:wrap}
+.pick .lbl{width:100%;font-weight:600}
+.pick .step{font-size:14px;padding:0 12px;height:36px;border-color:var(--ac)}
 .empty{text-align:center;color:var(--mut);padding:40px 10px}
 .bar{position:fixed;left:0;right:0;bottom:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--bd)}
 .bar div{max-width:640px;margin:0 auto;display:flex;gap:8px}
 input,select{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;min-width:0}
 input{flex:1}
+#q{width:100%;margin-top:8px}
 .go{border:0;background:var(--ac);color:#fff;font:inherit;font-weight:700;border-radius:10px;padding:10px 16px}
 .ghost{border:1px solid var(--bd);background:none;color:var(--mut);font:inherit;border-radius:10px;padding:10px 14px;width:100%;margin-top:14px}
 .msg{padding:30px 10px;text-align:center;color:var(--mut)}
@@ -44,6 +49,7 @@ input{flex:1}
     <button id="t1" class="on">Reposició</button>
     <button id="t2">Comprar <span id="cnt"></span></button>
   </div>
+  <input id="q" type="search" placeholder="Cerca un producte…">
 </header>
 <main id="main"><div class="msg">Carregant…</div></main>
 <div class="bar"><div>
@@ -55,7 +61,6 @@ input{flex:1}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
-/* ===== PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE (sustituye todo el bloque entre llaves) ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyD2q_IZM0VIZgdoMibaeaklfaRqTs_ynyM",
   authDomain: "llista-compra-41072.firebaseapp.com",
@@ -64,68 +69,111 @@ const firebaseConfig = {
   messagingSenderId: "585020372918",
   appId: "1:585020372918:web:7d091b4982e48314c9b317"
 };
-/* ========================================================================================= */
 
-const SECS=["Fruita i verdura","Carn i peix","Làctics i ous","Xarcuteria i formatges","Fleca","Rebost","Begudes","Congelats","Neteja","Higiene","Altres"];
-const SEED=[["Pomes",0],["Plàtans",0],["Tomàquets",0],["Cebes",0],["Patates",0],["Enciam",0],["Pollastre",1],["Carn picada",1],["Peix",1],["Llet",2],["Ous",2],["Iogurts",2],["Mantega",2],["Formatge",3],["Pernil",3],["Pa",4],["Oli d'oliva",5],["Arròs",5],["Pasta",5],["Llegums",5],["Cafè",5],["Sucre",5],["Sal",5],["Tomàquet fregit",5],["Aigua",6],["Suc",6],["Verdura congelada",7],["Gelat",7],["Detergent",8],["Rentaplats",8],["Paper de cuina",8],["Bosses d'escombraries",8],["Paper higiènic",9],["Gel de dutxa",9],["Pasta de dents",9]];
-let db=null,col=null,items=[],mode="reponer",editing=false;
+const STORES=["Àrea Guissona","Cal Valls","Feliu Badaló","Lidl"];
+const CAT={
+"Lidl":["Formatge d'all","Formatge de mel i orenga","Rulo vegetal","Llevat per fer pa","Iogurts"],
+"Àrea Guissona":["Formatge fumat d'ovella","Formatge curat d'ovella","Menjar gata","Iogurts","Cacau en pols","Carn de porc","Pernil salat"],
+"Feliu Badaló":["Pasta de dents","Aftershave","Tint cabell","Complements alimentaris","Desodorant llimona","Desodorant rosa","Acondicionador cabell rosa","Algues","Kombutxa","Caldo desidratat","Pebre","Curry"],
+"Cal Valls":["Fruita","Verdura","Bolets","Sucs","Azuki","Cigrons","Sal marina gruixuda","Sal marina fina","Arròs","Pipes de carbassa","Pipes de girasol","Llinassa","Sèsam","Cúrcuma","Gengibre","Plantes","All","Canonge","Rúcula","Mesclum","Ous","Ametlla natural","Ametlla pelada","Avellana natural","Anacards","Navius","Dàtils","Pistatxo torrats","Patates fregides","Tallarines DEM","Espirals DEM","Espaguetis DEM","Fideus DEM","Sopa de lletres DEM","Xocolata en pols","Farina d'espelta DEM","Snacks de poma","Snacks de plàtan","Espècies"]
+};
+let db=null,col=null,items=[],mode="reponer",editing=false,picking=null;
 const $=s=>document.querySelector(s);
 const ref=id=>col.doc(id);
 const slug=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||("x"+Date.now());
+const norm=s=>(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 const safe=p=>p.catch(e=>{console.error(e);alert("No s'ha pogut desar. Revisa la connexió.")});
+const stOf=i=>Array.isArray(i.stores)&&i.stores.length?i.stores:["Altres"];
+const buyOf=i=>i.buy||stOf(i)[0];
+const byName=(a,b)=>a.name.localeCompare(b.name,"ca");
 
-$("#ns").innerHTML=SECS.map(s=>`<option>${s}</option>`).join("");
-$("#ed").onclick=()=>{editing=!editing;mode="reponer";render()};
+function seedDocs(){
+  const m={};
+  STORES.forEach(st=>CAT[st].forEach(n=>{const id=slug(n);(m[id]=m[id]||{name:n,stores:[]}).stores.push(st)}));
+  return Object.entries(m).map(([id,v])=>[id,{name:v.name,stores:v.stores,need:false,buy:"",got:false,qty:1}]);
+}
+$("#ns").innerHTML=STORES.map(s=>`<option>${s}</option>`).join("");
+$("#ed").onclick=()=>{editing=!editing;mode="reponer";picking=null;render()};
 $("#t1").onclick=()=>{mode="reponer";render()};
-$("#t2").onclick=()=>{mode="comprar";editing=false;render()};
+$("#t2").onclick=()=>{mode="comprar";editing=false;picking=null;render()};
+$("#q").oninput=render;
 
+function groups(list,keyFn){
+  const keys=STORES.concat([...new Set(list.map(keyFn).filter(k=>!STORES.includes(k)))]);
+  return keys.map(k=>[k,list.filter(i=>keyFn(i)===k).sort(byName)]).filter(g=>g[1].length);
+}
 function render(){
   $("#ed").textContent=editing?"Fet":"Editar";
   $("#t1").classList.toggle("on",mode==="reponer");
   $("#t2").classList.toggle("on",mode==="comprar");
+  $("#q").style.display=mode==="reponer"?"":"none";
   const need=items.filter(i=>i.need);
   const pend=need.filter(i=>!i.got).length;
   $("#cnt").textContent=pend?"("+pend+")":"";
   const m=$("#main");m.innerHTML="";
-  const list=mode==="reponer"?items:need;
+  let list=mode==="reponer"?items:need;
+  if(mode==="reponer"){const q=norm($("#q").value.trim());if(q)list=list.filter(i=>norm(i.name).includes(q))}
   if(!list.length){
-    if(mode==="reponer"){
-      m.innerHTML='<div class="empty">El catàleg està buit.<br><br><button class="go" id="seed">Carrega productes d&#39;exemple</button></div>';
+    if(mode==="reponer"&&!items.length){
+      m.innerHTML=`<div class="empty">El catàleg està buit.<br><br><button class="go" id="seed">Carrega el catàleg inicial</button></div>`;
       $("#seed").onclick=seed;
-    }else m.innerHTML='<div class="empty">No falta res 🎉</div>';
+    }else m.innerHTML=`<div class="empty">${mode==="reponer"?"Cap resultat.":"No falta res 🎉"}</div>`;
     return;
   }
-  SECS.concat([...new Set(list.map(i=>i.section).filter(s=>!SECS.includes(s)))]).forEach(sec=>{
-    const g=list.filter(i=>i.section===sec).sort((a,b)=>a.name.localeCompare(b.name,"ca"));
-    if(!g.length)return;
-    const h=document.createElement("div");h.className="sec";h.textContent=sec;m.appendChild(h);
-    g.forEach(i=>m.appendChild(mode==="reponer"?rowReponer(i):rowComprar(i)));
+  const g=mode==="reponer"?groups(list,i=>stOf(i)[0]):groups(list,buyOf);
+  g.forEach(([store,arr])=>{
+    const h=document.createElement("div");h.className="sec";h.textContent=store;m.appendChild(h);
+    arr.forEach(i=>m.appendChild(mode==="reponer"?rowReponer(i):rowComprar(i)));
   });
   if(editing){
-    const L="Restableix el catàleg d'exemple (esborra tot)";
+    const L="Restableix el catàleg inicial (esborra tot)";
     const b=document.createElement("button");b.className="ghost";b.textContent=L;let armed=false;
     b.onclick=()=>{if(!armed){armed=true;b.textContent="Segur? Torna a prémer";setTimeout(()=>{armed=false;b.textContent=L},3000)}else reset()};
     m.appendChild(b);
   }
   if(mode==="comprar"&&need.some(i=>i.got)){
     const b=document.createElement("button");b.className="ghost";b.textContent="Acabar la compra (netejar els marcats)";
-    b.onclick=()=>need.filter(i=>i.got).forEach(i=>safe(ref(i.id).update({need:false,got:false,qty:1})));
+    b.onclick=()=>need.filter(i=>i.got).forEach(i=>safe(ref(i.id).update({need:false,got:false,qty:1,buy:""})));
     m.appendChild(b);
   }
 }
 function rowReponer(i){
+  const multi=stOf(i).length>1;
   if(editing){
-    const r=document.createElement("div");r.className="row";r.innerHTML='<span class="n"></span><button class="step"></button>';
-    r.firstChild.textContent=i.name;const b=r.querySelector("button");b.textContent="🗑";b.style.padding="0 10px";
+    const r=document.createElement("div");r.className="row";
+    r.innerHTML=`<span class="n"></span><button class="step ren">✏️</button><button class="step del">🗑</button>`;
+    r.firstChild.textContent=i.name;
+    if(multi){const s=document.createElement("small");s.textContent=stOf(i).join(" · ");r.firstChild.appendChild(s)}
+    r.querySelector(".ren").onclick=()=>{const v=prompt("Nou nom del producte:",i.name);if(v&&v.trim())safe(ref(i.id).update({name:v.trim()}))};
+    const b=r.querySelector(".del");b.style.padding="0 10px";
     let armed=false;
     b.onclick=()=>{if(!armed){armed=true;b.textContent="Esborrar?";b.style.color="var(--warn)";setTimeout(()=>{armed=false;b.textContent="🗑";b.style.color=""},3000)}else safe(ref(i.id).delete())};
     return r;
   }
+  if(picking===i.id&&!i.need){
+    const r=document.createElement("div");r.className="row pick";
+    r.innerHTML=`<span class="lbl"></span>`;
+    r.firstChild.textContent=i.name+" — on el compres?";
+    stOf(i).forEach(st=>{
+      const b=document.createElement("button");b.className="step";b.textContent=st;
+      b.onclick=()=>{picking=null;safe(ref(i.id).update({need:true,got:false,qty:1,buy:st}))};
+      r.appendChild(b);
+    });
+    const c=document.createElement("button");c.className="step";c.textContent="✕";c.onclick=()=>{picking=null;render()};
+    r.appendChild(c);
+    return r;
+  }
   const r=document.createElement("div");r.className="row"+(i.need?" need":"");
-  r.innerHTML=`<span class="n"></span>${i.need&&i.qty>1?`<span class="q">×${i.qty}</span>`:""}<span class="tag">${i.need?"Falta":"Hi ha"}</span>`;
+  r.innerHTML=`<span class="n"></span>${i.need&&i.qty>1?`<span class="q">×${i.qty}</span>`:""}<span class="tag"></span>`;
   r.firstChild.textContent=i.name;
+  if(multi){const s=document.createElement("small");s.textContent=stOf(i).join(" · ");r.firstChild.appendChild(s)}
+  r.querySelector(".tag").textContent=i.need?(multi?"Falta · "+buyOf(i):"Falta"):"Hi ha";
   r.style.cursor="pointer";
-  r.onclick=()=>safe(ref(i.id).update({need:!i.need,got:false,qty:1}));
+  r.onclick=()=>{
+    if(i.need)safe(ref(i.id).update({need:false,got:false,qty:1,buy:""}));
+    else if(multi){picking=i.id;render()}
+    else safe(ref(i.id).update({need:true,got:false,qty:1,buy:stOf(i)[0]}));
+  };
   if(i.need){
     const mk=(t,d)=>{const b=document.createElement("button");b.className="step";b.textContent=t;
       b.onclick=e=>{e.stopPropagation();safe(ref(i.id).update({qty:Math.max(1,(i.qty||1)+d)}))};return b};
@@ -140,37 +188,33 @@ function rowComprar(i){
   r.onclick=()=>safe(ref(i.id).update({got:!i.got}));
   return r;
 }
+function seed(){
+  const b=db.batch();
+  seedDocs().forEach(([id,d])=>b.set(ref(id),d));
+  safe(b.commit());
+}
 function reset(){
   const b=db.batch();
   items.forEach(i=>b.delete(ref(i.id)));
-  SEED.forEach(([name,s])=>b.set(ref(slug(name)),{name,section:SECS[s],need:false,got:false,qty:1}));
-  editing=false;safe(b.commit());
-}
-function seed(){
-  const b=db.batch();
-  SEED.forEach(([name,s])=>b.set(ref(slug(name)),{name,section:SECS[s],need:false,got:false,qty:1}));
-  safe(b.commit());
+  seedDocs().forEach(([id,d])=>b.set(ref(id),d));
+  editing=false;picking=null;safe(b.commit());
 }
 $("#add").onclick=async()=>{
   const name=$("#nn").value.trim();if(!name||!col)return;
-  const id=slug(name);
+  const id=slug(name),st=$("#ns").value;
   const ex=items.find(i=>i.id===id);
-  if(ex)await safe(ref(id).update({need:true,got:false}));
-  else await safe(ref(id).set({name,section:$("#ns").value,need:mode==="comprar",got:false,qty:1}));
+  if(ex)await safe(ref(id).update({stores:firebase.firestore.FieldValue.arrayUnion(st),need:true,got:false,buy:st}));
+  else{const need=mode==="comprar";await safe(ref(id).set({name,stores:[st],need,buy:need?st:"",got:false,qty:1}))}
   $("#nn").value="";
 };
 $("#nn").addEventListener("keydown",e=>{if(e.key==="Enter")$("#add").click()});
 
 try{
-  if(firebaseConfig.apiKey==="PEGA_AQUI"){
-    $("#main").innerHTML='<div class="msg">Falta enganxar la configuració de Firebase a l&#39;arxiu index.html.</div>';
-  }else{
-    firebase.initializeApp(firebaseConfig);
-    db=firebase.firestore();col=db.collection("items");
-    col.onSnapshot(s=>{items=s.docs.map(d=>({id:d.id,...d.data()}));render()},
-      e=>{$("#main").innerHTML='<div class="msg">No s&#39;ha pogut carregar la llista. Revisa les regles de Firebase.<br><small>'+(e.code||"")+'</small></div>'});
-  }
-}catch(e){$("#main").innerHTML='<div class="msg">Error en connectar amb Firebase.</div>'}
+  firebase.initializeApp(firebaseConfig);
+  db=firebase.firestore();col=db.collection("items");
+  col.onSnapshot(s=>{items=s.docs.map(d=>({id:d.id,...d.data()}));render()},
+    e=>{$("#main").innerHTML=`<div class="msg">No s'ha pogut carregar la llista. Revisa les regles de Firebase.<br><small>${e.code||""}</small></div>`});
+}catch(e){$("#main").innerHTML=`<div class="msg">Error en connectar amb Firebase.</div>`}
 </script>
 </body>
 </html>
